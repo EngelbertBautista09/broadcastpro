@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=2.0">
+<title>BroadcastPro FM — Radio Automation</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ════════════════════════ TOP BAR ════════════════════════ -->
+<div class="top-bar">
+
+  <!-- Now Playing -->
+  <div class="np-block">
+    <div class="vinyl" id="vinylDisc"><div class="vinyl-center"></div></div>
+    <div class="np-info">
+      <div class="np-label">Now Playing</div>
+      <div class="np-artist" id="npArtist">—</div>
+      <div class="np-title" id="npTitle">No track loaded</div>
+      <div class="np-meta">
+        <span id="npType" style="color:var(--text3)"></span>
+        <span class="on-air-badge" id="onAirBadge">● ON AIR</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timing -->
+  <div class="timing-block">
+    <div class="timing-row">
+      <span class="timing-lbl">Playlist:</span>
+      <span class="timing-val t-orange" id="plTotalDur">—</span>
+    </div>
+    <div class="timing-row">
+      <span class="timing-lbl">Duration:</span>
+      <span class="dot dot-g"></span>
+      <span class="timing-val t-green" id="curDur">—</span>
+    </div>
+    <div class="timing-row">
+      <span class="timing-lbl">Position:</span>
+      <span class="dot dot-w"></span>
+      <span class="timing-val t-white" id="posTime">0:00</span>
+    </div>
+    <div class="timing-row">
+      <span class="timing-lbl">Ends at:</span>
+      <span class="timing-val" style="font-size:10px;color:var(--text2);" id="trackEndTime">—</span>
+    </div>
+    <div class="timing-row">
+      <span class="timing-lbl">On-air:</span>
+      <span class="timing-val" style="font-size:10px;color:var(--text3);" id="onAirElapsed">—</span>
+    </div>
+    <div class="next-up-row">Up Next: <span id="nextUpName">—</span></div>
+  </div>
+
+  <!-- Merged Progress + Remain -->
+  <div class="prog-remain-block">
+    <div class="prog-remain-top">
+      <span class="prog-remain-lbl">REMAIN</span>
+      <span class="prog-remain-dig" id="remainDig">0:00</span>
+      <span class="prog-remain-tracks" id="remainTracks">— tracks left</span>
+    </div>
+    <div class="prog-track" id="progTrack">
+      <div class="prog-fill" id="mainProg"></div>
+    </div>
+    <div class="prog-times">
+      <span id="progPos">0:00</span>
+      <span id="progDur">0:00</span>
+    </div>
+  </div>
+
+  <!-- Clock -->
+  <div class="clock-block">
+    <div class="clock-dig" id="clockDig">00:00:00</div>
+    <div class="clock-date" id="clockDate"></div>
+  </div>
+
+  <!-- Mic -->
+  <div class="mic-block">
+    <div class="mic-indicator" id="micIndicator" title="Click to toggle mic on/off" onclick="toggleMicManual()">🎙</div>
+    <div class="mic-level-wrap">
+      <div class="mic-level-bar" id="micLevelBar">
+        <div class="mic-level-fill" id="micLevelFill"></div>
+        <div class="mic-level-peak" id="micLevelPeak" style="left:0%"></div>
+        <div class="mic-threshold-line" id="micThreshLine" style="left:50%"></div>
+      </div>
+      <div class="mic-peak-val" id="micPeakVal">-∞ dB</div>
+    </div>
+    <div class="mic-label" id="micStatusLbl">MIC IDLE</div>
+  </div>
+
+  <!-- Header Controls — far right -->
+  <div class="header-controls">
+    <button class="hc-btn hc-restart" id="btnRestart" onclick="doRestart()">↺ RESTART</button>
+    <button class="hc-btn hc-skip" id="btnSkip" onclick="doSkipNext()">⏭ SKIP</button>
+    <button class="hc-btn hc-loop" id="btnLoop" onclick="doToggleLoop()">⇄ LOOP</button>
+    <button class="hc-btn hc-random" id="btnRandom" onclick="openRandomizer()">🎲 RANDOM</button>
+  </div>
+</div>
+
+<!-- ════════════════════════ MAIN ════════════════════════ -->
+<div class="main-wrap" id="mainWrap">
+
+  <!-- ══════ LEFT: PLAYLIST ══════ -->
+  <div class="playlist-panel">
+    <div class="pl-header">
+      <div class="pl-header-top">
+        <span class="pl-title-lbl">Playlist</span>
+        <span class="pl-stats" id="plStats">0 items</span>
+      </div>
+      <div class="pl-next-empty" id="plNextEmpty">
+        <span>Next empty slot: </span>
+        <span class="ne-time" id="neTime">—</span>
+        <span class="ne-countdown" id="neCountdown"></span>
+      </div>
+    </div>
+    <div class="pl-mode-bar">
+      <div class="pl-mode-dot" id="modeDot"></div>
+      <span class="pl-mode-text">Mode: <span class="pl-mode-name" id="modeNameDisplay">ADD</span></span>
+      <div class="pl-mode-insert-pos" id="insertPosBar">
+        at pos <input type="number" class="insert-pos-input" id="insertPosInput" value="1" min="1">
+      </div>
+    </div>
+    <!-- Now-Playing sticky card -->
+    <div class="pl-now-strip" id="plNowStrip">
+      <div class="pl-now-strip-label">
+        <span class="pl-now-spin" id="plNowSpin"></span>
+        NOW PLAYING
+        <span style="margin-left:auto;font-size:7px;color:var(--text3);" id="plNowType"></span>
+      </div>
+      <div class="pl-now-artist" id="plNowArtist">—</div>
+      <div class="pl-now-title"  id="plNowTitle"></div>
+      <div class="pl-now-progress-track" id="plNowProgTrack" onclick="plNowSeek(event)" title="Click to seek">
+        <div class="pl-now-progress-fill" id="plNowProgFill"></div>
+      </div>
+      <div class="pl-now-meta">
+        <span id="plNowPos">0:00</span>
+        <span id="plNowDur">0:00</span>
+      </div>
+      <div class="pl-now-badges" id="plNowBadges"></div>
+      <div class="pl-now-next" id="plNowNext"></div>
+    </div>
+    <div class="pl-list" id="plList"></div>
+    <div class="pl-nav">
+      <button class="pl-nav-btn" onclick="plScrollTop()">▲ Top</button>
+      <button class="pl-nav-btn" onclick="plScrollBottom()">▼ Bottom</button>
+      <button class="pl-nav-btn" onclick="plMoveUp()">▲ Move Up</button>
+      <button class="pl-nav-btn" onclick="plMoveDown()">▼ Move Dn</button>
+      <button class="pl-nav-btn" onclick="autoDetectMixPoints()" style="color:var(--teal);border-color:var(--teal-dim);" title="Auto-detect intro/outro mix-points for all tracks">⚡ Mix-Pts</button>
+    </div>
+  </div>
+
+  <!-- ══════ MIDDLE: FILE BROWSER ══════ -->
+  <div class="file-panel">
+    <!-- Action mode row -->
+    <div class="action-row" id="actionRow">
+      <div class="act-btn act-add active" data-mode="ADD" onclick="setActionMode('ADD')">ADD</div>
+      <div class="act-btn act-insert" data-mode="INSERT" onclick="setActionMode('INSERT')">INSERT</div>
+      <div class="act-btn act-replace" data-mode="REPLACE" onclick="setActionMode('REPLACE')">REPLACE</div>
+      <div class="act-btn act-delete" data-mode="DELETE" onclick="setActionMode('DELETE')">DELETE</div>
+      <div class="act-btn act-clear" data-mode="CLEAR" onclick="setActionMode('CLEAR')">CLEAR</div>
+      <div class="act-file act-btn" id="fileViewTab" onclick="showFilePanel()" title="Show file library (F)">📂 FILES</div>
+      <div class="act-btn act-browser" id="browserTab" onclick="showBrowserPanel()" title="Show web browser (B)">🌐 WEB</div>
+    </div>
+    <!-- Insert position bar -->
+    <div class="insert-pos-bar" id="insertPosBarFile">
+      <span>Insert at position:</span>
+      <input type="number" value="1" min="1" id="insertPosFile" oninput="syncInsertPos(this.value)">
+      <span style="color:var(--text3);font-size:7px;">(push others down)</span>
+    </div>
+    <!-- File list view -->
+    <div class="file-list" id="fileList">
+      <div class="fi-loading">📂 No folder loaded — use "+ Add Folder" below</div>
+    </div>
+    <!-- YouTube browser view -->
+    <div class="yt-browser-view" id="ytBrowserView">
+      <!-- Tab bar -->
+      <div class="br-tab-bar">
+        <div class="br-tab on"  id="brTabDir"    onclick="brSwitchTab('dir')">📻 Radio</div>
+        <div class="br-tab"     id="brTabYTsrch" onclick="brSwitchTab('ytsearch')">🎵 Music</div>
+        <div class="br-tab"     id="brTabYT"     onclick="brSwitchTab('yt')">▶ Player</div>
+        <div class="br-tab"     id="brTabUrl"    onclick="brSwitchTab('url')">🌐 URL</div>
+        <div class="br-tab"     id="brTabLyrics" onclick="brSwitchTab('lyrics')">♪ Lyrics</div>
+      </div>
+      <!-- URL bar (Player / Custom URL tabs) -->
+      <div class="yt-url-bar" id="brUrlBar" style="display:none;">
+        <button class="br-nav-btn" onclick="brNavBack()" title="Back">◀</button>
+        <button class="br-nav-btn" onclick="brNavRefresh()" title="Reload">↺</button>
+        <input class="yt-url-input" id="ytUrlInput" type="text" placeholder="Paste YouTube URL or website..."
+          onkeydown="if(event.key==='Enter')brNavigate()">
+        <button class="yt-load-btn" onclick="brNavigate()">▶ Go</button>
+      </div>
+      <!-- ── Internet Archive Music Search Panel ── -->
+      <div class="br-stations" id="brYTSearchView" style="display:none;flex-direction:column;">
+        <!-- Search bar -->
+        <div class="ia-search-header">
+          <div class="ia-search-bar">
+            <input class="yt-search-input" id="ytSearchInput" type="text"
+              placeholder="Search artist, song, album…"
+              onkeydown="if(event.key==='Enter')doYTSearch()">
+            <button class="yt-search-btn" onclick="doYTSearch()">🔍</button>
+          </div>
+          <div class="ia-filter-row">
+            <select id="iaMediaType" class="ia-select">
+              <option value="audio">All Audio</option>
+              <option value="etree">Live Concerts</option>
+            </select>
+            <select id="iaFormat" class="ia-select">
+              <option value="MP3">MP3</option>
+              <option value="VBR MP3">VBR MP3</option>
+              <option value="Ogg Vorbis">OGG</option>
+            </select>
+            <span class="ia-badge">archive.org · free · no ads</span>
+          </div>
+        </div>
+        <div class="yt-results" id="ytSearchResults">
+          <div class="yt-search-empty">
+            <span style="font-size:20px">📼</span><br><br>
+            Search the <strong>Internet Archive</strong><br>
+            <span style="font-size:8px;color:var(--text3);">
+              200,000+ free audio items · public domain · concerts · podcasts<br>
+              MP3 streams route through the mixer — faders &amp; EQ included
+            </span>
+          </div>
+        </div>
+      </div>
+      <!-- Radio Directory tab -->
+      <div class="br-stations" id="brDirView" style="display:flex;">
+        <div style="padding:6px 8px;font-size:8px;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;">
+          Built-in embeddable radio streams — click to open in frame
+        </div>
+        <div class="br-stations-grid" id="brStationsGrid"></div>
+      </div>
+      <!-- Frame (used by YT Player, Custom URL, Lyrics tabs) -->
+      <div class="yt-frame-wrap" id="ytFrameWrap" style="display:none;">
+        <iframe id="brFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation" allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer" allowfullscreen></iframe>
+        <div class="br-frame-notice" id="brFrameNotice"></div>
+      </div>
+      <!-- Bottom action bar -->
+      <div class="yt-add-bar">
+        <span class="yt-notice" id="brNotice">Select a station or search YouTube above</span>
+        <button class="yt-add-btn" onclick="addYTToPlaylist()" id="brAddBtn" style="display:none;">+ Add to Playlist</button>
+      </div>
+    </div>
+    <!-- Search/folder area -->
+    <div class="search-box">
+      <div class="sb-row">
+        <select class="sb-select" id="sourceSelect" onchange="onSourceChange(this.value)" style="max-width:120px;">
+          <option value="">— No folder —</option>
+        </select>
+        <select class="sb-select" id="genreSelect" onchange="onGenreChange(this.value)" style="max-width:80px;">
+          <option value="">All</option>
+          <option value="music">Music</option>
+          <option value="jingles">Jingles</option>
+          <option value="oldies">Oldies</option>
+          <option value="sfx">SFX</option>
+        </select>
+        <input class="sb-input" type="text" id="searchInput" placeholder="Search..." oninput="doSearch(this.value)" style="flex:1;">
+      </div>
+      <div class="sb-row">
+        <button class="sb-btn sb-folder-add" onclick="openFolderPicker()">📁 + Folder</button>
+        <button class="sb-btn sb-folder-rem" onclick="removeFolder()">− Folder</button>
+        <button class="sb-btn sb-all" onclick="searchAllFolders()">All Folders</button>
+        <button class="sb-btn sb-reset" onclick="resetSearch()">↺ Reset</button>
+        <input type="file" id="folderPicker" webkitdirectory multiple accept="audio/*" style="display:none;" onchange="onFolderPicked(this)">
+      </div>
+    </div>
+  </div>
+
+<!-- ══════ RIGHT: DJ MIXER (permanent) ══════ -->
+  <div class="mixer-panel-right">
+    <div class="mixer-right-inner">
+
+      <!-- Auto-fade bar -->
+      <div class="autofade-bar">
+        <span class="af-label">⟳ Auto-Fade</span>
+        <button class="af-toggle-btn" id="afBtn" onclick="toggleAutoFade()">OFF</button>
+        <div class="af-sep"></div>
+        <span class="af-label">Dur:</span>
+        <input class="af-slider" type="range" min="1" max="30" value="8" id="afDurSlider" oninput="updateAfDur(this.value)" style="width:55px;background:#1a3060;">
+        <span class="af-val" id="afDurVal">8s</span>
+        <div class="af-sep"></div>
+        <span class="af-label">Curve:</span>
+        <input class="af-slider" type="range" min="1" max="10" value="5" id="afCurveSlider" oninput="updateAfCurve(this.value)" style="width:45px;background:#1a3060;">
+        <span class="af-val" id="afCurveVal" style="min-width:46px;">Linear</span>
+        <div class="af-prog-wrap">
+          <div class="af-prog-dot" id="afDot"></div>
+          <div class="af-prog-track"><div class="af-prog-fill" id="afProgFill"></div></div>
+          <span class="af-prog-lbl" id="afProgLbl">Standby</span>
+        </div>
+        <button class="af-fade-now" onclick="triggerManualFade()">▶ Fade Now</button>
+      </div>
+
+      <!-- Decks Row - YouDJ-inspired redesign -->
+      <div class="decks-row">
+
+        <!-- ═══════ FULL-WIDTH WAVEFORM BANNER (like YouDJ top) ═══════ -->
+        <div class="ydj-waveform-banner">
+          <!-- Deck A waveform + track info -->
+          <div class="ydj-wave-side ydj-wave-a">
+            <div class="ydj-track-header">
+              <span class="ydj-deck-badge ydj-badge-a">A</span>
+              <span class="ydj-track-name" id="ydj-title-a">No track loaded</span>
+              <span class="ydj-track-time" id="ydj-time-a">0:00 / 0:00</span>
+            </div>
+            <div class="ydj-wave-wrap" id="waveWrapA" onclick="waveSeek('A',event)" ondragover="onDeckDragOver(event,'A')" ondragleave="onDeckDragLeave('A')" ondrop="onDeckDrop(event,'A')">
+              <div class="wave-dual" id="waveDualA">
+                <canvas id="waveStripA" class="wave-top"></canvas>
+                <canvas id="waveStripA2" class="wave-bot"></canvas>
+                <div class="wave-playhead" id="waveHeadA"></div>
+              </div>
+            </div>
+          </div>
+          <!-- Center BPM display -->
+          <div class="ydj-bpm-center">
+            <div class="ydj-bpm-readout" id="ydj-bpm-display">
+              <span class="ydj-bpm-val" id="ydj-bpm-main">—</span>
+              <span class="ydj-bpm-unit">BPM</span>
+              <div class="ydj-bpm-arrows">
+                <button class="ydj-bpm-arrow" onclick="nudgeBpm(0.5)">▲</button>
+                <button class="ydj-bpm-arrow" onclick="nudgeBpm(-0.5)">▼</button>
+              </div>
+            </div>
+            <div class="ydj-bpm-diff" id="syncDiff">—</div>
+          </div>
+          <!-- Deck B waveform + track info -->
+          <div class="ydj-wave-side ydj-wave-b">
+            <div class="ydj-track-header ydj-header-b">
+              <span class="ydj-track-time" id="ydj-time-b">0:00 / 0:00</span>
+              <span class="ydj-track-name ydj-name-b" id="ydj-title-b">No track loaded</span>
+              <span class="ydj-deck-badge ydj-badge-b">B</span>
+            </div>
+            <div class="ydj-wave-wrap ydj-wave-wrap-b" id="waveWrapB" ondragover="onDeckDragOver(event,'B')" ondragleave="onDeckDragLeave('B')" ondrop="onDeckDrop(event,'B')">
+              <div class="wave-dual" id="waveDualB">
+                <canvas id="waveStripB" class="wave-top"></canvas>
+                <canvas id="waveStripB2" class="wave-bot"></canvas>
+                <div class="wave-playhead" id="waveHeadB"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════ MAIN DECK PANELS ═══════ -->
+        <div class="ydj-main-row">
+
+          <!-- ══════════════ DECK A ══════════════ -->
+          <div class="deck deck-a ydj-deck" id="deckA">
+
+            <!-- Hidden legacy for JS compat -->
+            <div class="deck-track" id="deckATitle" style="display:none">No track loaded</div>
+            <div class="deck-bpm" id="_legacyBpmA" style="display:none"></div>
+            <span class="deck-pl-badge" id="deckABadge" style="display:none">PL:—</span>
+
+            <!-- Jog Wheel row -->
+            <div class="ydj-jog-row">
+              <!-- Left: EQ knobs -->
+              <div class="ydj-eq-panel">
+                <div class="ydj-eq-knob-col">
+                  <div class="k-lbl" style="color:#ff9940">HI</div>
+                  <div class="rknob sz-lg hi eq-a" id="eqA_hi" data-val="0" data-min="-10" data-max="10"><div class="rknob-indicator" style="height:12px;top:4px;"></div></div>
+                  <div class="k-val" id="eqA_hi_val" style="color:#ff9940">0</div>
+                </div>
+                <div class="ydj-eq-knob-col">
+                  <div class="k-lbl" style="color:#ffcc40">MID</div>
+                  <div class="rknob sz-lg mid eq-a" id="eqA_mid" data-val="0" data-min="-10" data-max="10"><div class="rknob-indicator" style="height:12px;top:4px;"></div></div>
+                  <div class="k-val" id="eqA_mid_val" style="color:#ffcc40">0</div>
+                </div>
+                <div class="ydj-eq-knob-col">
+                  <div class="k-lbl" style="color:#40aaff">BASS</div>
+                  <div class="rknob sz-lg lo eq-a" id="eqA_lo" data-val="0" data-min="-10" data-max="10"><div class="rknob-indicator" style="height:12px;top:4px;"></div></div>
+                  <div class="k-val" id="eqA_lo_val" style="color:#40aaff">0</div>
+                </div>
+                <div class="ydj-eq-knob-col">
+                  <div class="k-lbl" style="color:#cc66ff">FILTER</div>
+                  <div class="rknob sz-md filter" id="filterA" data-val="50" data-min="0" data-max="100"><div class="rknob-indicator" style="height:10px;top:3px;"></div></div>
+                  <div class="k-val" id="filterA_val" style="color:#cc66ff">0</div>
+                </div>
+              </div>
+
+              <!-- Center: Jog wheel -->
+              <div class="jog-section ydj-jog" id="deckDropZoneA" ondragover="onDeckDragOver(event,'A')" ondragleave="onDeckDragLeave('A')" ondrop="onDeckDrop(event,'A')">
+                <div class="jog-outer">
+                  <canvas class="platter-canvas" id="platterA" width="172" height="172"></canvas>
+                  <svg class="tonearm-svg" width="58" height="112" viewBox="0 0 58 112">
+                    <circle cx="50" cy="10" r="8" fill="#3a3a4a" stroke="#222" stroke-width="1.5"/>
+                    <circle cx="50" cy="10" r="4" fill="#777"/>
+                    <circle cx="50" cy="10" r="1.8" fill="#bbb"/>
+                    <line x1="49" y1="17" x2="13" y2="92" stroke="#888" stroke-width="3.5" stroke-linecap="round"/>
+                    <line x1="13" y1="92" x2="7" y2="104" stroke="#777" stroke-width="2.5" stroke-linecap="round"/>
+                    <rect x="2" y="100" width="12" height="9" rx="1.5" fill="#2a2a3a" stroke="#111" stroke-width="1"/>
+                    <circle cx="8" cy="112" r="2" fill="#5a9fff"/>
+                  </svg>
+                  <div class="platter-rpm" id="platterRpmA">33.3 RPM · STOP</div>
+                </div>
+              </div>
+
+              <!-- Right: Channel fader + VU + transport -->
+              <div class="ydj-right-col">
+                <!-- AutoBPM + SYNC strip for Deck A -->
+                <div class="ydj-auto-strip">
+                  <div class="ydj-bpm-box">
+                    <span class="ydj-bpm-box-val bpm-a" id="syncBpmA">—</span>
+                    <span class="ydj-bpm-box-lbl" id="bpmAState">IDLE</span>
+                  </div>
+                  <button class="ydj-tap-btn" onclick="tapTempo('A')" title="Tap Tempo">TAP</button>
+                  <button class="ydj-detect-btn" id="bpmDetectA" onclick="autoDetectBpm('A')" title="Auto-detect BPM">⚡</button>
+                </div>
+
+                <!-- Channel fader + VU -->
+                <div class="ydj-fader-vu">
+                  <div class="deck-vu-wrap">
+                    <div class="deck-vu-bar"><div class="deck-vu-fill" id="deckVuAL" style="height:0%"></div></div>
+                    <div class="deck-vu-bar"><div class="deck-vu-fill" id="deckVuAR" style="height:0%"></div></div>
+                  </div>
+                  <div class="ch-fader-wrap">
+                    <div class="ch-fader-track" id="chFtA">
+                      <div class="ch-fader-fill ch-ff-a" id="chFfA"></div>
+                      <div class="ch-fader-handle" id="chFhA"></div>
+                    </div>
+                    <div class="ch-fader-lbl">CH A</div>
+                    <div class="ch-fader-val" id="chFvA">80%</div>
+                  </div>
+                </div>
+
+                <!-- Transport -->
+                <div class="ydj-transport">
+                  <button class="ydj-play-btn ydj-play-a" id="playA" onclick="djTogglePlay('A')">▶</button>
+                  <button class="ydj-cue-btn" id="cueA" onclick="djCue('A')">CUE</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tempo slider row -->
+            <div class="ydj-tempo-row">
+              <span class="ydj-tempo-lbl">TEMPO</span>
+              <button class="ydj-loop-btn" id="loop4A" onclick="quickLoop('A',4)" title="4-bar loop">↺4</button>
+              <input class="ydj-tempo-slider tempo-slider" type="range" min="-8" max="8" value="0" step="0.1" id="tempoA" oninput="setTempo('A',this.value)">
+              <span class="ydj-tempo-val" id="tempoValA">±0.0%</span>
+              <button class="ydj-tempo-reset" onclick="resetTempo('A')" title="Reset tempo">⊙</button>
+            </div>
+
+            <!-- Loop + Perf Pads row -->
+            <div class="ydj-loop-pads-row">
+              <div class="ydj-loop-btns">
+                <button class="ydj-loop-sm-btn" id="loopInA" onclick="setLoopIn('A')">IN</button>
+                <button class="ydj-loop-sm-btn" id="loopOutA" onclick="setLoopOut('A')">OUT</button>
+                <button class="ydj-loop-sm-btn" id="loop1A" onclick="quickLoop('A',1)">1</button>
+                <button class="ydj-loop-sm-btn" id="loop2A" onclick="quickLoop('A',2)">2</button>
+                <button class="ydj-loop-sm-btn" id="loop8A" onclick="quickLoop('A',8)">8</button>
+              </div>
+              <div class="ydj-perf-pads-row">
+                <div class="ydj-perf-pads" id="perfPadsA"></div>
+                <div class="ydj-pm-row">
+                  <button class="ydj-pm-btn on" id="pmA_hot" onclick="setPerfMode('A','hot')">HOT</button>
+                  <button class="ydj-pm-btn" id="pmA_roll" onclick="setPerfMode('A','roll')">ROLL</button>
+                  <button class="ydj-pm-btn" id="pmA_slicer" onclick="setPerfMode('A','slicer')">SLC</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- FX Pad -->
+            <div class="ydj-fx-section">
+              <!-- hidden knobs kept for JS compat -->
+              <div style="display:none">
+                <select id="fxSelectA" onchange="setFX('A',this.value);updateFxPadLabel('A')"><option value="none">none</option><option value="echo">echo</option><option value="reverb">reverb</option><option value="flanger">flanger</option><option value="filter">filter</option><option value="bitcrush">bitcrush</option><option value="stutter">stutter</option><option value="slicer">slicer</option><option value="phaser">phaser</option><option value="brake">brake</option><option value="tapestop">tapestop</option></select>
+                <button id="fxOnA" onclick="toggleFX('A')">OFF</button>
+                <div class="rknob" id="fxWetA" data-val="50" data-min="0" data-max="100"><div class="rknob-indicator"></div></div>
+                <div class="rknob" id="fxP1A" data-val="50" data-min="0" data-max="100"><div class="rknob-indicator"></div></div>
+                <div class="rknob" id="fxP2A" data-val="50" data-min="0" data-max="100"><div class="rknob-indicator"></div></div>
+                <div class="rknob" id="gainA" data-val="75" data-min="0" data-max="100"><div class="rknob-indicator"></div></div>
+              </div>
+              <!-- FX XY Pad (YouDJ-style) -->
+              <div class="fx-pad-wrap">
+                <div class="fx-pad" id="fxPadA"
+                     onmousedown="fxPadStart('A',event)" ontouchstart="fxPadStart('A',event)"
+                     onmousemove="fxPadMove('A',event)" ontouchmove="fxPadMove('A',event)"
+                     onmouseup="fxPadEnd('A')" onmouseleave="fxPadEnd('A')" ontouchend="fxPadEnd('A')">
+                  <div class="fx-pad-hline" id="fxPadHlineA"></div>
+                  <div class="fx-pad-vline" id="fxPadVlineA"></div>
+                  <div class="fx-pad-dot" id="fxPadDotA"></div>
+                  <span class="fx-pad-ctr-lbl" id="fxPadCtrA">HOLD</span>
+                </div>
+                <div class="fx-pad-footer">
+                  <button class="fx-pad-on-btn" id="fxPadOnA" onclick="toggleFX('A');this.textContent=fxState['A'].on?'ON':'OFF';this.classList.toggle('on',fxState['A'].on)">OFF</button>
+                  <span class="fx-pad-name" id="fxPadNameA">— FX —</span>
+                  <select class="fx-pad-sel" onchange="document.getElementById('fxSelectA').value=this.value;setFX('A',this.value);updateFxPadLabel('A')" id="fxPadSelA">
+                    <option value="none">— FX —</option>
+                    <option value="echo">Echo</option>
+                    <option value="reverb">Reverb</option>
+                    <option value="flanger">Flanger</option>
+                    <option value="filter">Filter</option>
+                    <option value="bitcrush">Crush</option>
+                    <option value="stutter">Stutter</option>
+                    <option value="slicer">Slicer</option>
+                    <option value="phaser">Phaser</option>
+                    <option value="brake">Brake</option>
+                    <option value="tapestop">TapeStop</option>
+                  </select>
+                  <span class="fx-pad-num">FX 1</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Scratch panel (collapsed) -->
+            <div class="scratch-deck" id="scratchDeckA">
+              <div class="scratch-deck-hdr">
+                <span class="scratch-deck-title">⟳ Scratch FX</span>
+                <span class="scratch-close-btn" onclick="toggleScratch('A')">✕</span>
+              </div>
+              <div class="scratch-mode-strip">
+                <button class="scr-mode on" id="scrMA_scratch" onclick="setScrMode('A','scratch')">SCRATCH</button>
+                <button class="scr-mode" id="scrMA_nudge" onclick="setScrMode('A','nudge')">NUDGE</button>
+                <button class="scr-mode" id="scrMA_pitch" onclick="setScrMode('A','pitch')">PITCH</button>
+                <button class="scr-mode" id="scrMA_brake" onclick="setScrMode('A','brake')">BRAKE</button>
+              </div>
+              <div class="scratch-pad" id="scrPadA" onmousedown="startScr('A',event)" ontouchstart="startScr('A',event)">
+                <span class="scratch-pad-label">⟵ drag to scratch ⟶</span>
+              </div>
+              <div class="scr-fx-grid">
+                <button class="scr-fx scr-hot" onclick="doScrFX('A','baby')">Baby Scr</button>
+                <button class="scr-fx scr-hot" onclick="doScrFX('A','tear')">Tear</button>
+                <button class="scr-fx scr-hot" onclick="doScrFX('A','flare')">Flare</button>
+                <button class="scr-fx scr-hot" onclick="doScrFX('A','crab')">Crab</button>
+                <button class="scr-fx scr-cyan" onclick="doScrFX('A','echo')">Echo Out</button>
+                <button class="scr-fx scr-pink" onclick="doScrFX('A','reverse')">Reverse</button>
+                <button class="scr-fx scr-green" onclick="doScrFX('A','spinup')">Spin Up</button>
+                <button class="scr-fx scr-yellow" onclick="doScrFX('A','brake_fx')">Brake FX</button>
+                <button class="scr-fx scr-purple" onclick="doScrFX('A','chirp')">Chirp</button>
+                <button class="scr-fx scr-purple" onclick="doScrFX('A','orbit')">Orbit</button>
+                <button class="scr-fx scr-cyan" onclick="doScrFX('A','hydroplane')">Hydroplane</button>
+                <button class="scr-fx scr-pink" onclick="doScrFX('A','stab')">Stab</button>
+              </div>
+            </div>
+
+          </div><!-- end deck-a -->
+
+          <!-- ══════════════ CENTER MIXER COL ══════════════ -->
+          <div class="center-col ydj-center">
+
+            <!-- ── YouDJ-style BPM + AutoBPM + AutoSync panel ── -->
+            <div class="ydj-beats-panel" id="bpmSyncSection">
+              <div class="ydj-beats-header">
+                <span class="ydj-beats-icon">👾</span>
+                <span class="ydj-beats-title">Beats In Sync</span>
+                <div class="ydj-beats-dot" id="ydj-sync-dot"></div>
+              </div>
+
+              <!-- BPM factor bar (like YouDJ) -->
+              <div class="ydj-bpm-factor-row">
+                <span class="ydj-bpmf-label">AutoBPM factor:</span>
+                <span class="ydj-bpmf-val" id="ydj-bpm-factor">+0.0%</span>
+                <button class="ydj-bpmf-help" title="How much the BPM is shifted to match">?</button>
+              </div>
+              <div class="ydj-bpmf-bar-wrap">
+                <button class="ydj-bpmf-btn" onclick="nudgeBpmFactor(-0.1)">−</button>
+                <div class="ydj-bpmf-bar">
+                  <div class="ydj-bpmf-fill" id="ydj-bpmf-fill" style="width:50%"></div>
+                  <div class="ydj-bpmf-center"></div>
+                </div>
+                <button class="ydj-bpmf-btn" onclick="nudgeBpmFactor(0.1)">+</button>
+              </div>
+
+              <!-- Song BPMs display -->
+              <div class="ydj-song-bpms">
+                <span class="ydj-sbpm-label">Song BPMs:</span>
+                <span class="ydj-sbpm-a" id="syncBpmA">—</span>
+                <span style="color:var(--text3);font-size:8px;">BPM</span>
+                <span class="ydj-sbpm-sep">|</span>
+                <span class="ydj-sbpm-b" id="syncBpmB">—</span>
+                <span style="color:var(--text3);font-size:8px;">BPM</span>
+              </div>
+              <div class="ydj-bpm-states">
+                <span id="bpmAState" style="font-size:7px;color:var(--text3)">IDLE</span>
+                <span id="bpmBState" style="font-size:7px;color:var(--text3)">IDLE</span>
+              </div>
+
+              <!-- AutoBPM + AutoSync toggle buttons (the key YouDJ feature) -->
+              <div class="ydj-auto-toggles">
+                <button class="ydj-auto-toggle" id="autoBpmToggle" onclick="toggleAutoBpm()">
+                  <span class="ydj-at-label">AutoBPM</span>
+                  <span class="ydj-at-state" id="autoBpmState">OFF</span>
+                  <span class="ydj-at-help" title="Automatically match BPM of decks">?</span>
+                </button>
+                <button class="ydj-auto-toggle" id="autoSyncToggle" onclick="toggleAutoSync()">
+                  <span class="ydj-at-label">AutoSYNC</span>
+                  <span class="ydj-at-state" id="autoSyncState">OFF</span>
+                  <span class="ydj-at-help" title="Continuously keep beats locked in sync">?</span>
+                </button>
+              </div>
+
+              <!-- Manual controls row -->
+              <div class="ydj-manual-sync-row">
+                <button class="ydj-msync-btn ydj-ms-a" onclick="tapTempo('A')" title="Tap Tempo A">TAP A</button>
+                <button class="ydj-msync-btn ydj-ms-b" onclick="tapTempo('B')" title="Tap Tempo B">TAP B</button>
+                <button class="ydj-msync-btn" onclick="bpmReset()" title="Reset tempos">RST</button>
+              </div>
+            </div>
+
+            <!-- Crossfader -->
+            <div class="center-section ydj-cf-section">
+              <div class="cf-ab-row">
+                <span class="cf-a">A</span>
+                <span style="font-size:7px;color:var(--text3)">XFADER</span>
+                <span class="cf-b">B</span>
+              </div>
+              <div class="cf-curve-row">
+                <button class="cf-curve-btn on" id="cfCutA" onclick="setCfCurve('cut')">CUT</button>
+                <button class="cf-curve-btn" id="cfLinA" onclick="setCfCurve('linear')">LIN</button>
+                <button class="cf-curve-btn" id="cfSmoA" onclick="setCfCurve('smooth')">SMO</button>
+              </div>
+              <input class="crossfader" type="range" min="0" max="100" value="50" id="crossfader" oninput="updateCrossfader(this.value)">
+              <div class="cf-pos" id="cfPos">Center</div>
+              <button class="cf-center-btn" onclick="centerCrossfader()">↔ Center</button>
+            </div>
+
+            <!-- Channel Faders -->
+            <div class="center-section">
+              <div class="cs-title">Channel Faders</div>
+              <div class="faders-row">
+                <div class="fader-col">
+                  <div class="fader-track" id="ft-music"><div class="fader-fill fader-fill-music" id="ff-music"></div><div class="fader-handle" id="fh-music"></div></div>
+                  <div class="fader-lbl fader-lbl-music">MUS</div>
+                  <div class="fader-val fv-music" id="fv-music">80%</div>
+                </div>
+                <div class="fader-col">
+                  <div class="fader-track" id="ft-sampler"><div class="fader-fill fader-fill-sfx" id="ff-sampler"></div><div class="fader-handle" id="fh-sampler"></div></div>
+                  <div class="fader-lbl fader-lbl-sfx">SFX</div>
+                  <div class="fader-val fv-sfx" id="fv-sampler">75%</div>
+                </div>
+                <div class="fader-col">
+                  <div class="fader-track" id="ft-mic"><div class="fader-fill fader-fill-mic" id="ff-mic"></div><div class="fader-handle" id="fh-mic"></div></div>
+                  <div class="fader-lbl fader-lbl-mic">MIC</div>
+                  <div class="fader-val fv-mic" id="fv-mic">85%</div>
+                </div>
+                <div class="fader-col">
+                  <div class="fader-track" id="ft-duck"><div class="fader-fill fader-fill-duck" id="ff-duck"></div><div class="fader-handle" id="fh-duck"></div></div>
+                  <div class="fader-lbl fader-lbl-duck">DUCK</div>
+                  <div class="fader-val fv-duck" id="fv-duck">50%</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mic Ducking -->
+            <div class="center-section">
+              <div class="cs-title">🎙 Mic Ducking</div>
+              <div class="duck-row-item">
+                <span class="duck-label">Level</span>
+                <div class="duck-adj-wrap">
+                  <button class="duck-adj" onclick="adjustDuck(-5)">−</button>
+                  <span class="duck-adj-val" id="duckValDisplay" style="color:#ff9900">50%</span>
+                  <button class="duck-adj" onclick="adjustDuck(5)">+</button>
+                </div>
+              </div>
+              <div class="duck-row-item">
+                <span class="duck-label">Attack</span>
+                <div class="duck-adj-wrap">
+                  <button class="duck-adj" onclick="adjustAttack(-50)">−</button>
+                  <span class="duck-adj-val" id="attackVal">200ms</span>
+                  <button class="duck-adj" onclick="adjustAttack(50)">+</button>
+                </div>
+              </div>
+              <div class="duck-row-item">
+                <span class="duck-label">Release</span>
+                <div class="duck-adj-wrap">
+                  <button class="duck-adj" onclick="adjustRelease(-100)">−</button>
+                  <span class="duck-adj-val" id="releaseVal">800ms</span>
+                  <button class="duck-adj" onclick="adjustRelease(100)">+</button>
+                </div>
+              </div>
+              <div class="mic-sens-row">
+                <span class="duck-label">Sens</span>
+                <input class="mic-sens-slider" type="range" min="0" max="100" value="40" id="micSensSlider">
+              </div>
+              <button class="duck-lock-btn" id="duckLockBtn" onclick="toggleDuckLock()">🔓 Click to Lock</button>
+              <div class="duck-status idle" id="duckStatus">● IDLE</div>
+            </div>
+
+            <!-- Master VU -->
+            <div class="center-section" style="background:#080810">
+              <div class="cs-title">Master Out</div>
+              <div class="vu-row-item">
+                <span class="vu-ch-lbl">L</span>
+                <div class="vu-track" style="position:relative">
+                  <div class="mvu-fill" id="djVuL" style="width:0%"></div>
+                  <div class="vu-peak-ind" id="vuPeakIndL" style="left:0%"></div>
+                </div>
+              </div>
+              <div class="vu-row-item">
+                <span class="vu-ch-lbl">R</span>
+                <div class="vu-track" style="position:relative">
+                  <div class="mvu-fill" id="djVuR" style="width:0%"></div>
+                  <div class="vu-peak-ind" id="vuPeakIndR" style="left:0%"></div>
+                </div>
+              </div>
+              <div class="pfl-row">
+                <span style="font-size:7px;color:var(--text3)">PFL:</span>
+                <div class="pfl-dot" id="pflDotA"></div><span style="font-size:7px;color:var(--text3)">A</span>
+                <div class="pfl-dot" id="pflDotB"></div><span style="font-size:7px;color:var(--text3)">B</span>
+              </div>
+            </div>
+
+          </div><!-- end center-col -->
+
+          <!-- ══════════════ DECK B ══════════════ -->
+          <div class="deck deck-b ydj-deck" id="deckB">
+
+            <!-- Hidden legacy for JS compat -->
+            <div class="deck-track" id="deckBTitle" style="display:none">No track loaded</div>
+            <div class="deck-bpm" id="deckBBpm" style="display:none">—</div>
+            <span class="deck-pl-badge" id="deckBBadge" style="display:none">PL:—</span>
+
+            <!-- Jog Wheel row -->
+            <div class="ydj-jog-row ydj-jog-row-b">
+              <!-- Left: transport + fader + AutoBPM -->
+              <div class="ydj-right-col ydj-left-col-b">
+                <!-- AutoBPM strip for Deck B -->
+                <div class="ydj-auto-strip ydj-auto-strip-b">
+                  <button class="ydj-detect-btn" id="bpmDetectB" onclick="autoDetectBpm('B')" title="Auto-detect BPM">⚡</button>
+                  <button class="ydj-tap-btn" onclick="tapTempo('B')" title="Tap Tempo">TAP</button>
+                  <div class="ydj-bpm-box">
+                    <span class="ydj-bpm-box-val bpm-b" id="syncBpmB">—</span>
+                    <span class="ydj-bpm-box-lbl" id="bpmBState">IDLE</span>
+                  </div>
+                </div>
+
+                <!-- Channel fader + VU -->
+                <div class="ydj-fader-vu">
+                  <div class="ch-fader-wrap">
+                    <div class="ch-fader-track" id="chFtB">
+                      <div class="ch-fader-fill ch-ff-b" id="chFfB"></div>
+                      <div class="ch-fader-handle" id="chFhB"></div>
+                    </div>
+                    <div class="ch-fader-lbl">CH B</div>
+                    <div class="ch-fader-val" id="chFvB">80%</div>
+                  </div>
+                  <div class="deck-vu-wrap">
+                    <div class="deck-vu-bar"><div class="deck-vu-fill" id="deckVuBL" style="height:0%"></div></div>
+                    <div class="deck-vu-bar"><div class="deck-vu-fill" id="deckVuBR" style="height:0%"></div></div>
+                  </div>
+                </div>
+
+                <!-- Transport -->
+                <div class="ydj-transport ydj-transport-b">
+                  <button class="ydj-cue-btn" id="cueB" onclick="djCue('B')">CUE</button>
+                  <button class="ydj-play-btn ydj-play-b" id="playB" onclick="djTogglePlay('B')">▶</button>
+                </div>
+              </div>
+
+              <!-- Center: Jog wheel -->
+              <div class="jog-section ydj-jog" id="deckDropZoneB" ondragover="onDeckDragOver(event,'B')" ondragleave="onDeckDragLeave('B')" ondrop="onDeckDrop(event,'B')">
+                <div class="jog-outer">
+                  <canvas class="platter-canvas" id="platterB" width="172" height="172"></canvas>
+                  <svg class="tonearm-svg" width="58" height="112" viewBox="0 0 58 112">
+                    <circle cx="50" cy="10" r="8" fill="#3a3a4a" stroke="#222" stroke-width="1.5"/>
+                    <circle cx="50" cy="10" r="4" fill="#777"/>
+                    <circle cx="50" cy="10" r="1.8" fill="#bbb"/>
+                    <line x1="49" y1="17" x2="13" y2="92" stroke="#888" stroke-width="3.5" stroke-linecap="round"/>
+                    <line x1="13" y1="92" x2="7" y2="104" stroke="#777" stroke-width="2.5" stroke-linecap="round"/>
+                    <rect x="2" y="100" width="12" height="9" rx="1.5" fill="#2a2a3a" stroke="#111" stroke-width="1"/>
+                    <circle cx="8" cy="112" r="2" fill="#00cc50"/>
+                  </svg>
+                  <div class="platter-rpm" id="platterRpmB">33.3 RPM · STOP</div>
+                </div>
+              </div>
+
+              <!-- Right: EQ knobs -->
+              <div class="ydj-eq-panel ydj-eq-panel-b">
+                <div class="ydj-eq-knob-col">
+                  <div class="k-lbl" style="color:#ff9940">HI</div>
+                  <div class="rknob sz-lg hi eq-b" id="eqB_hi" data-val="0" data-min="-10" data-max="10"><div class="rknob-indicator" style="height:12px;top:4px;"></div></div>
+                  <div class="k-val" id="eqB_hi_val" style="color:#ff9940">0</div>
+                </div>
+                <div class="ydj-eq-knob-col">
+                  <div class="k-lbl" style="color:#ffcc40">MID</div>
+                  <div class="rknob sz-lg mid eq-b" id="eqB_mid" data-val="0" data-min="-10" data-max="10"><div class="rknob-indicator" style="height:12px;top:4px;"></div></div>
+                  <div class="k-val" id="eqB_mid_val" style="color:#ffcc40">0</div>
+                </div>
+                <div class="ydj-eq-knob-col">
+                  <div class="k-lbl" style="color:#40aaff">BASS</div>
+                  <div class="rknob sz-lg lo eq-b" id="eqB_lo" data-val="0" data-min="-10" data-max="10"><div class="rknob-indicator" style="height:12px;top:4px;"></div></div>
+                  <div class="k-val" id="eqB_lo_val" style="color:#40aaff">0</div>
+                </div>
+                <div class="ydj-eq-knob-col">
+                  <div class="k-lbl" style="color:#cc66ff">FILTER</div>
+                  <div class="rknob sz-md filter" id="filterB" data-val="50" data-min="0" data-max="100"><div class="rknob-indicator" style="height:10px;top:3px;"></div></div>
+                  <div class="k-val" id="filterB_val" style="color:#cc66ff">0</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tempo slider row -->
+            <div class="ydj-tempo-row">
+              <span class="ydj-tempo-lbl">TEMPO</span>
+              <button class="ydj-loop-btn" id="loop4B" onclick="quickLoop('B',4)" title="4-bar loop">↺4</button>
+              <input class="ydj-tempo-slider tempo-slider" type="range" min="-8" max="8" value="0" step="0.1" id="tempoB" oninput="setTempo('B',this.value)">
+              <span class="ydj-tempo-val" id="tempoValB">±0.0%</span>
+              <button class="ydj-tempo-reset" onclick="resetTempo('B')" title="Reset tempo">⊙</button>
+            </div>
+
+            <!-- Loop + Perf Pads row -->
+            <div class="ydj-loop-pads-row">
+              <div class="ydj-loop-btns">
+                <button class="ydj-loop-sm-btn" id="loopInB" onclick="setLoopIn('B')">IN</button>
+                <button class="ydj-loop-sm-btn" id="loopOutB" onclick="setLoopOut('B')">OUT</button>
+                <button class="ydj-loop-sm-btn" id="loop1B" onclick="quickLoop('B',1)">1</button>
+                <button class="ydj-loop-sm-btn" id="loop2B" onclick="quickLoop('B',2)">2</button>
+                <button class="ydj-loop-sm-btn" id="loop8B" onclick="quickLoop('B',8)">8</button>
+              </div>
+              <div class="ydj-perf-pads-row">
+                <div class="ydj-perf-pads" id="perfPadsB"></div>
+                <div class="ydj-pm-row">
+                  <button class="ydj-pm-btn on" id="pmB_hot" onclick="setPerfMode('B','hot')">HOT</button>
+                  <button class="ydj-pm-btn" id="pmB_roll" onclick="setPerfMode('B','roll')">ROLL</button>
+                  <button class="ydj-pm-btn" id="pmB_slicer" onclick="setPerfMode('B','slicer')">SLC</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- FX Pad -->
+            <div class="ydj-fx-section">
+              <!-- hidden knobs kept for JS compat -->
+              <div style="display:none">
+                <select id="fxSelectB" onchange="setFX('B',this.value);updateFxPadLabel('B')"><option value="none">none</option><option value="echo">echo</option><option value="reverb">reverb</option><option value="flanger">flanger</option><option value="filter">filter</option><option value="bitcrush">bitcrush</option><option value="stutter">stutter</option><option value="slicer">slicer</option><option value="phaser">phaser</option><option value="brake">brake</option><option value="tapestop">tapestop</option></select>
+                <button id="fxOnB" onclick="toggleFX('B')">OFF</button>
+                <div class="rknob" id="fxWetB" data-val="50" data-min="0" data-max="100"><div class="rknob-indicator"></div></div>
+                <div class="rknob" id="fxP1B" data-val="50" data-min="0" data-max="100"><div class="rknob-indicator"></div></div>
+                <div class="rknob" id="fxP2B" data-val="50" data-min="0" data-max="100"><div class="rknob-indicator"></div></div>
+                <div class="rknob" id="gainB" data-val="75" data-min="0" data-max="100"><div class="rknob-indicator"></div></div>
+              </div>
+              <!-- FX XY Pad (YouDJ-style) -->
+              <div class="fx-pad-wrap">
+                <div class="fx-pad" id="fxPadB"
+                     onmousedown="fxPadStart('B',event)" ontouchstart="fxPadStart('B',event)"
+                     onmousemove="fxPadMove('B',event)" ontouchmove="fxPadMove('B',event)"
+                     onmouseup="fxPadEnd('B')" onmouseleave="fxPadEnd('B')" ontouchend="fxPadEnd('B')">
+                  <div class="fx-pad-hline" id="fxPadHlineB"></div>
+                  <div class="fx-pad-vline" id="fxPadVlineB"></div>
+                  <div class="fx-pad-dot" id="fxPadDotB"></div>
+                  <span class="fx-pad-ctr-lbl" id="fxPadCtrB">HOLD</span>
+                </div>
+                <div class="fx-pad-footer">
+                  <button class="fx-pad-on-btn" id="fxPadOnB" onclick="toggleFX('B');this.textContent=fxState['B'].on?'ON':'OFF';this.classList.toggle('on',fxState['B'].on)">OFF</button>
+                  <span class="fx-pad-name" id="fxPadNameB">— FX —</span>
+                  <select class="fx-pad-sel" onchange="document.getElementById('fxSelectB').value=this.value;setFX('B',this.value);updateFxPadLabel('B')" id="fxPadSelB">
+                    <option value="none">— FX —</option>
+                    <option value="echo">Echo</option>
+                    <option value="reverb">Reverb</option>
+                    <option value="flanger">Flanger</option>
+                    <option value="filter">Filter</option>
+                    <option value="bitcrush">Crush</option>
+                    <option value="stutter">Stutter</option>
+                    <option value="slicer">Slicer</option>
+                    <option value="phaser">Phaser</option>
+                    <option value="brake">Brake</option>
+                    <option value="tapestop">TapeStop</option>
+                  </select>
+                  <span class="fx-pad-num">FX 1</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Scratch panel (collapsed) -->
+            <div class="scratch-deck" id="scratchDeckB">
+              <div class="scratch-deck-hdr">
+                <span class="scratch-deck-title">⟳ Scratch FX</span>
+                <span class="scratch-close-btn" onclick="toggleScratch('B')">✕</span>
+              </div>
+              <div class="scratch-mode-strip">
+                <button class="scr-mode on" id="scrMB_scratch" onclick="setScrMode('B','scratch')">SCRATCH</button>
+                <button class="scr-mode" id="scrMB_nudge" onclick="setScrMode('B','nudge')">NUDGE</button>
+                <button class="scr-mode" id="scrMB_pitch" onclick="setScrMode('B','pitch')">PITCH</button>
+                <button class="scr-mode" id="scrMB_brake" onclick="setScrMode('B','brake')">BRAKE</button>
+              </div>
+              <div class="scratch-pad" id="scrPadB" onmousedown="startScr('B',event)" ontouchstart="startScr('B',event)">
+                <span class="scratch-pad-label">⟵ drag to scratch ⟶</span>
+              </div>
+              <div class="scr-fx-grid">
+                <button class="scr-fx scr-hot" onclick="doScrFX('B','baby')">Baby Scr</button>
+                <button class="scr-fx scr-hot" onclick="doScrFX('B','tear')">Tear</button>
+                <button class="scr-fx scr-hot" onclick="doScrFX('B','flare')">Flare</button>
+                <button class="scr-fx scr-hot" onclick="doScrFX('B','crab')">Crab</button>
+                <button class="scr-fx scr-cyan" onclick="doScrFX('B','echo')">Echo Out</button>
+                <button class="scr-fx scr-pink" onclick="doScrFX('B','reverse')">Reverse</button>
+                <button class="scr-fx scr-green" onclick="doScrFX('B','spinup')">Spin Up</button>
+                <button class="scr-fx scr-yellow" onclick="doScrFX('B','brake_fx')">Brake FX</button>
+                <button class="scr-fx scr-purple" onclick="doScrFX('B','chirp')">Chirp</button>
+                <button class="scr-fx scr-purple" onclick="doScrFX('B','orbit')">Orbit</button>
+                <button class="scr-fx scr-cyan" onclick="doScrFX('B','hydroplane')">Hydroplane</button>
+                <button class="scr-fx scr-pink" onclick="doScrFX('B','stab')">Stab</button>
+              </div>
+            </div>
+
+          </div><!-- end deck-b -->
+
+        </div><!-- end ydj-main-row -->
+
+      </div><!-- end decks-row -->
+    
+    </div><!-- end mixer-right-inner -->
+
+    <!-- SAMPLER PANEL — slides over mixer from right -->
+    <div class="sampler-panel" id="samplerPanel">
+      <div class="sampler-header">
+        <div class="sampler-tabs">
+          <div class="sampler-tab on" onclick="showSamplerTab('lyrics')">♪ Lyrics</div>
+          <div class="sampler-tab" onclick="showSamplerTab('instants')">Instants</div>
+          <div class="sampler-tab" onclick="showSamplerTab('swvol')">SW Volumes</div>
+          <div class="sampler-tab" onclick="showSamplerTab('log')">Play Log</div>
+        </div>
+        <div class="sampler-close" onclick="closeSampler()" title="Close">✕</div>
+      </div>
+      <div class="sampler-body">
+
+        <!-- LYRICS -->
+        <div class="lyrics-view active" id="lyricsView">
+          <div class="lyrics-header">
+            <div class="lyrics-song" id="lyricsSongTitle">No track playing</div>
+            <div class="lyrics-artist" id="lyricsArtist"></div>
+          </div>
+          <!-- Lyrics toolbar -->
+          <div class="lyrics-toolbar">
+            <button class="lyr-btn ai-btn" id="lyrAiBtn" onclick="autoFetchLyrics(false)" title="Auto-fetch lyrics from lrclib.net (works on GitHub Pages)">✨ Lyrics</button>
+            <button class="lyr-btn primary" onclick="lyricsSearchWeb()" title="Open Google lyrics search for current song in new tab">🔍 Search Web</button>
+            <button class="lyr-btn" onclick="lyricsPickLRC()" title="Load a .lrc timestamped lyrics file for this song">📂 Load .lrc</button>
+            <button class="lyr-btn" onclick="lyricsClearCurrent()" title="Clear lyrics for this track">✕ Clear</button>
+            <span class="lyr-source-lbl" id="lyrSourceLbl">no lyrics</span>
+            <input type="file" id="lrcFilePicker" accept=".lrc,.txt" style="display:none" onchange="onLRCFilePicked(this)">
+          </div>
+          <!-- LRC drop zone (shown when no lyrics loaded) -->
+          <div class="lrc-drop-zone" id="lrcDropZone"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="onLRCDrop(event)"
+            onclick="lyricsPickLRC()"
+            style="display:none">
+            <div class="lrc-drop-zone-text">
+              Drop a <span>.lrc file</span> here or click to browse<br>
+              — or use <span>🔍 Search Web</span> to find lyrics online —<br>
+              <span style="color:var(--text3);font-size:8px;">LRC files contain timestamped lyrics that sync with playback</span>
+            </div>
+          </div>
+          <div class="lyrics-scroll" id="lyricsScroll">
+            <div class="lyrics-no-data">No track playing.</div>
+          </div>
+        </div>
+
+        <!-- INSTANTS -->
+        <div class="instants-view" id="instantsView">
+          <div class="sw-bank-row" id="swBankRow">
+            <div class="sw-add-bank" onclick="addNewBank()" title="Add new bank">＋ New Bank</div>
+          </div>
+          <div class="sw-bank-title">
+            <span id="activeBankName">No banks — click + New Bank</span>
+            <span style="font-size:7px;color:var(--text3)">Right-click pad to add/edit</span>
+          </div>
+          <div class="sw-grid-wrap">
+            <div class="sw-grid" id="swGrid"></div>
+          </div>
+        </div>
+
+        <!-- SWEEPER VOLUMES -->
+        <div class="swvol-view" id="swvolView">
+          <div class="swvol-scroll" id="swVolScroll">
+            <div class="fi-loading">No sweepers configured yet.</div>
+          </div>
+        </div>
+
+        <!-- PLAY LOG -->
+        <div class="log-view" id="logView">
+          <div class="log-scroll" id="logScroll"></div>
+        </div>
+
+      </div><!-- end sampler-body -->
+
+      <!-- Sampler transport (only shown on Instants tab) -->
+      <div class="sw-transport" id="swTransport" style="display:none;">
+        <button class="sw-tp-btn sw-tp-nav" onclick="swNavPrev()">◀ Prev</button>
+        <button class="sw-tp-btn sw-tp-nav" onclick="swNavNext()">▼ Next</button>
+        <button class="sw-tp-btn sw-tp-stop" onclick="swStop()">⏹ STOP</button>
+        <button class="sw-tp-btn sw-tp-ag" id="swAgBtn" onclick="toggleAutoGain()">AUTO GAIN</button>
+        <button class="sw-tp-btn sw-tp-fm" id="swFmBtn" onclick="toggleFadeMix()">FADE MIX</button>
+      </div>
+    </div><!-- end sampler-panel -->
+
+  </div><!-- end mixer-panel-right -->
+</div><!-- end main-wrap -->
+
+<!-- ════════════════════════ BOTTOM BAR ════════════════════════ -->
+<div class="bottom-bar">
+  <button class="bb-btn bb-play" id="bbPlay" onclick="bbPlayPause()">▶ PLAY</button>
+  <button class="bb-btn bb-stop" onclick="masterStop()">⏹ STOP</button>
+  <button class="bb-btn bb-next" onclick="doSkipNext()">⏭ NEXT</button>
+  <div class="bb-next-up" id="bbNextUp">Up Next: <span>—</span></div>
+  <div class="bb-next-up" id="npExportLbl" style="border-left:1px solid var(--border);color:var(--text3);min-width:160px;">● OFF AIR</div>
+  <div class="vu-wrap">
+    <div class="vu-row-bb">
+      <span class="vu-lbl-bb">L</span>
+      <div class="vu-track-bb"><div class="vu-fill-bb" id="vuL" style="width:0%"></div><div class="vu-peak" id="vuPeakL" style="left:0%"></div></div>
+    </div>
+    <div class="vu-row-bb">
+      <span class="vu-lbl-bb">R</span>
+      <div class="vu-track-bb"><div class="vu-fill-bb" id="vuR" style="width:0%"></div><div class="vu-peak" id="vuPeakR" style="left:0%"></div></div>
+    </div>
+  </div>
+  <button class="bb-sampler"  id="bbSamplerBtn" onclick="toggleSampler()">🎛 SAMPLER ▶</button>
+  <button class="bb-autoplay" id="bbAutoplay"   onclick="toggleAutoplay()">▶ Autoplay</button>
+  <button class="bb-autoplay" id="bbAssistBtn" onclick="toggleAssistMode()" style="border-left:1px solid var(--border);margin-left:0;">🎧 Assist</button>
+  <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle Dark/Light mode">🌙<span class="theme-toggle-lbl" id="themeLbl">DARK</span></button>
+  <button class="bb-exit"                        onclick="doExit()">✕ Exit</button>
+</div>
+
+<!-- ════════════════════════ MODALS ════════════════════════ -->
+
+<!-- Randomizer Modal -->
+<div class="modal-overlay" id="randomizerModal">
+  <div class="modal-box">
+    <div class="modal-title">🎲 Playlist Randomizer</div>
+    <div class="modal-field">
+      <div class="modal-label">Fill Until (time)</div>
+      <input class="modal-input" type="time" id="randUntilTime" step="1" value="09:00:00">
+      <div style="font-size:8px;color:var(--text3);margin-top:3px;">— or set duration below —</div>
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Duration (HH:MM:SS)</div>
+      <input class="modal-input" type="text" id="randDuration" placeholder="00:30:00" value="00:30:00">
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Source</div>
+      <select class="modal-input" id="randSource">
+        <option value="all">All Loaded Folders</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Genre Filter</div>
+      <select class="modal-input" id="randGenre">
+        <option value="">Any</option>
+        <option value="music">Music</option>
+        <option value="jingles">Jingles</option>
+        <option value="oldies">Oldies</option>
+        <option value="sfx">SFX</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Mode</div>
+      <div class="rand-radio-group">
+        <label class="rand-radio-label"><input type="radio" name="randMode" value="append" checked> Add to end</label>
+        <label class="rand-radio-label"><input type="radio" name="randMode" value="replace"> Replace playlist</label>
+      </div>
+    </div>
+    <div class="rand-preview-box" id="randPreview">Click "Preview" to see what will be added.</div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-cancel" onclick="closeModal('randomizerModal')">Cancel</button>
+      <button class="modal-btn" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple-dim);" onclick="previewRandomize()">Preview</button>
+      <button class="modal-btn modal-ok" onclick="doRandomize()">🎲 Randomize</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sweeper Pad Edit Modal -->
+<div class="modal-overlay" id="padEditModal">
+  <div class="modal-box">
+    <div class="modal-title" id="padEditTitle">Configure Pad</div>
+    <div class="modal-field">
+      <div class="modal-label">Audio File</div>
+      <div class="modal-row">
+        <input class="modal-input" type="text" id="padFilePath" placeholder="No file selected" readonly style="flex:1;">
+        <button class="modal-btn" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue-dim);margin-left:6px;" onclick="pickPadFile()">Browse</button>
+        <input type="file" id="padFilePicker" accept="audio/*" style="display:none;" onchange="onPadFilePicked(this)">
+      </div>
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Title</div>
+      <input class="modal-input" type="text" id="padTitle" placeholder="Pad title...">
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Color</div>
+      <div class="color-picker-grid" id="padColorPicker"></div>
+    </div>
+    <div class="modal-row" style="gap:16px;">
+      <div class="modal-field" style="flex:1;">
+        <div class="modal-label">Volume</div>
+        <input class="modal-input" type="range" min="0" max="100" value="100" id="padVolume" oninput="document.getElementById('padVolumeVal').textContent=this.value+'%'">
+        <div style="font-size:9px;color:var(--blue);margin-top:2px;" id="padVolumeVal">100%</div>
+      </div>
+      <div class="modal-field" style="flex:1;">
+        <div class="modal-label">Start Trim (ms)</div>
+        <input class="modal-input" type="number" id="padStartMs" value="0" min="0">
+      </div>
+      <div class="modal-field" style="flex:1;">
+        <div class="modal-label">Mix Time (ms)</div>
+        <input class="modal-input" type="number" id="padMixTimeMs" value="0" min="0">
+      </div>
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Preview</div>
+      <div class="pad-preview-transport">
+        <button class="pad-preview-btn pad-prev-play" onclick="padPreviewPlay()">▶ Play</button>
+        <button class="pad-preview-btn pad-prev-stop" onclick="padPreviewStop()">⏹ Stop</button>
+        <div class="pad-progress"><div class="pad-prog-fill" id="padProgFill"></div></div>
+        <span class="pad-time-display" id="padTimeDisplay">0:00 / 0:00</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-delete" id="padDeleteBtn" onclick="deletePad()">Delete Pad</button>
+      <button class="modal-btn modal-cancel" onclick="closeModal('padEditModal')">Cancel</button>
+      <button class="modal-btn modal-ok" onclick="savePad()">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bank Name Modal -->
+<div class="modal-overlay" id="bankNameModal">
+  <div class="modal-box" style="min-width:280px;">
+    <div class="modal-title" id="bankNameTitle">New Bank</div>
+    <div class="modal-field">
+      <div class="modal-label">Bank Name</div>
+      <input class="modal-input" type="text" id="bankNameInput" placeholder="e.g. Voice Sweepers">
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-cancel" onclick="closeModal('bankNameModal')">Cancel</button>
+      <button class="modal-btn modal-ok" onclick="confirmBankName()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clear Confirm Modal -->
+<div class="modal-overlay" id="clearConfirmModal">
+  <div class="modal-box" style="min-width:280px;">
+    <div class="modal-title">⚠ Clear Playlist</div>
+    <div style="font-size:10px;color:var(--text2);margin-bottom:12px;">This will remove all items from the playlist. Are you sure?</div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-cancel" onclick="closeModal('clearConfirmModal')">Cancel</button>
+      <button class="modal-btn modal-delete" onclick="confirmClear()">Clear All</button>
+    </div>
+  </div>
+</div>
+
+<!-- Context Menu -->
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" id="ctxRename" onclick="ctxAction('rename')">✏ Rename Bank</div>
+  <div class="ctx-item danger" id="ctxDelete" onclick="ctxAction('delete')">🗑 Delete Bank</div>
+</div>
+
+<div class="zoom-hud" id="zoomHud">
+  <button class="zoom-hud-btn" onclick="bpZoom(-0.05)">−</button>
+  <span class="zoom-hud-lbl" id="zoomHudLbl">100%</span>
+  <button class="zoom-hud-btn" onclick="bpZoom(+0.05)">+</button>
+  <button class="zoom-hud-btn" onclick="bpZoomReset()" style="font-size:9px;padding:1px 5px;">↺</button>
+</div>
+  <script src="app.js"></script>
+</body>
+</html>
